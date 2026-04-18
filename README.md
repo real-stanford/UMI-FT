@@ -413,9 +413,8 @@ If you find this codebase useful, feel free to cite our paper:
       title={In-the-Wild Compliant Manipulation with UMI-FT}, 
       author={Hojung Choi and Yifan Hou and Chuer Pan and Seongheon Hong and Austin Patel and Xiaomeng Xu and Mark R. Cutkosky and Shuran Song},
       year={2026},
-      eprint={2601.09988},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
+      booktitle={2026 IEEE International Conference on Robotics and Automation (ICRA)},
+      organization={IEEE},
       url={https://arxiv.org/abs/2601.09988},
       }
 ```
