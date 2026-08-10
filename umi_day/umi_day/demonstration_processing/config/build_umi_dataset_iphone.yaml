@@ -1,0 +1,20 @@
+session_dir: ''
+overwrite: false
+task_names: [] # Extract these tasks from each demo for addition to the replay buffer
+stages:
+  - dataset_plan
+  - replay_buffer
+
+replay_buffer:
+  vis_rgb: false
+  vis_video: false
+  num_workers: -1
+
+# don't log hydra job
+defaults:
+  - override hydra/job_logging: disabled
+
+hydra:
+  output_subdir: null
+  run:
+    dir: .

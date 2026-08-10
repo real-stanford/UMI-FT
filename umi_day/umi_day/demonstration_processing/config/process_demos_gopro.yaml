@@ -1,0 +1,68 @@
+demonstrations_dir: 'tmp_demonstrations' # Directory name for output demonstrations
+stages: null # List of stage names to run. If null then rull all stages (see process_demos.py for stage names)
+skip_stages: [] # Stages to skip (removes entries from `stages`)
+overwrite: false # If demonstration already exists in output directory, overwrite it
+
+## Filter demonstrations with the following parameters
+filters:
+  demonstration_names: null # List of specific demonstrations to process. If not specified, then process all demonstrations
+  demonstration_regex: null # Regex filter to only process demonstrations that match this filter
+  session_name: null # Process only demonstrations with this exact session name
+  max_demos: -1 # Maximum number of demonstrations to process. -1 for all demonstrations
+
+## Parameters for each stage
+group:
+  overwrite: ${..overwrite}
+  demonstrations_dir: ${..demonstrations_dir}
+  filters: ${..filters}
+  iphone_dir: '/Volumes/iPhone/UMI_iPhone' # Directory name for iPhone data
+  left_gopro_dir: '/Volumes/GoProLeft/DCIM' # Directory name for left GoPro data
+  right_gopro_dir: '/Volumes/GoProRight/DCIM' # Directory name for right GoPro data
+  symlink: false # Create symlinks to demonstration data instead of copy it
+  skip_left: false # Skip processing left gripper data
+  skip_right: false # Skip processing right gripper data
+
+timesync:
+  overwrite: ${..overwrite}
+
+align:
+  overwrite: ${..overwrite}
+  demonstrations_dir: ${..demonstrations_dir}
+  min_frame_count: 60 # Minimum number of frames for a demonstration to be considered valid
+
+detect:
+  overwrite: ${..overwrite}
+  aruco_config: 'calibration/aruco_config.yaml'
+  gopro_intrinsics: 'calibration/gopro_intrinsics_2_7k.json'
+  iphone_calibration: 'calibration/iphone15pro_calibration.yaml'
+  num_workers: null # Number of workers to use for detection. If null, then matches CPU count
+
+calibrate:
+  overwrite: ${..overwrite}
+  tag_det_threshold: 0.8
+
+label:
+  overwrite: ${..overwrite}
+  progression:
+    mode: linear
+  task_extraction:
+    visualize: true # output a video with subtask label overlay
+    mode_narration:
+      subtask_end_period: 0.5 # how much time can pass before we consider the narration to be referring to a new subtask
+    mode_gripper_width:
+      gradient_threshold: 0.1 # We take the max of the gradient of the gripper width at all timesteps and multiply this value to determine a threshold for when to consider the gripper opening or closing
+      visualize: false # plot that shows subtask segmentation as a function of gripper width
+      pad_subtask_seconds: 0.5 # how much time (in seconds) to include at the end of the previous subtask in the current subtask
+
+visualize:
+  overwrite: ${..overwrite}
+  visualize_til_frame: -1 # Visualize until this frame in the video. -1 for all frames
+  
+# don't log hydra job
+defaults:
+  - override hydra/job_logging: disabled
+
+hydra:
+  output_subdir: null
+  run:
+    dir: .

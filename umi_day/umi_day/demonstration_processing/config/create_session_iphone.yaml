@@ -1,0 +1,16 @@
+demonstrations_dir: tmp_demonstrations
+sessions_dir: tmp_sessions
+input_name_filters: []
+input_session_filters: []
+output_session_name: ''
+max_demos: -1
+overwrite: false
+
+# don't log hydra job
+defaults:
+  - override hydra/job_logging: disabled
+
+hydra:
+  output_subdir: null
+  run:
+    dir: .

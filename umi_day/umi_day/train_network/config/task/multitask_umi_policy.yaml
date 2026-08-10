@@ -1,0 +1,19 @@
+defaults: 
+  - singletask_umi_policy
+
+name: multitask_umi_policy
+
+shape_meta: &shape_meta
+  obs:
+    task_language:
+      shape: [768]
+      type: low_dim
+      horizon: 1
+      ignore_by_policy: false
+      is_language: true
+
+dataset:
+  language_embedding:
+    _target_: umi_day.train_network.model.language.language_embedding.LanguageEmbedding
+    model_name: "sentence-transformers/sentence-t5-base"
+  sample_type: task

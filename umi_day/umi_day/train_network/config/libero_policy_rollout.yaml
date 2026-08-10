@@ -1,0 +1,10 @@
+defaults:
+  - libero_policy
+
+name: libero_policy_rollout
+
+_target_: umi_day.train_network.workspace.rollout_policy_workspace.RolloutPolicyWorkspace
+
+rollout:
+  checkpoint_path: null
+  policy_only_checkpoint_path: null

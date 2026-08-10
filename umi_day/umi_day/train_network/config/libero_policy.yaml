@@ -1,0 +1,94 @@
+name: libero_policy
+task_name: ${task.name}
+exp_name: "default"
+
+_target_: umi_day.train_network.workspace.train_policy_workspace.TrainPolicyWorkspace
+
+defaults:
+  - _self_
+  - task: libero_10
+  - model: diffusion_unet_timm
+
+shape_meta: ${task.shape_meta}
+
+dataloader:
+  batch_size: 32
+  num_workers: 8
+  persistent_workers: false
+  pin_memory: true
+  shuffle: true
+
+val_dataloader:
+  batch_size: 32
+  num_workers: 8
+  persistent_workers: false
+  pin_memory: true
+  shuffle: false
+
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 2.5e-5
+  betas: [0.95, 0.999]
+  eps: 1.0e-8
+  weight_decay: 1.0e-6
+
+training:
+  scale_lr_with_gpus: true
+  checkpoint_every: 10
+  debug: false
+  gradient_accumulate_every: 1
+  lr_scheduler: cosine
+  lr_warmup_steps: 2000
+  max_train_steps: null
+  max_val_steps: null
+  num_epochs: 200
+  resume: false
+  rollout_every: 10
+  sample_every: 5
+  seed: 42
+  tqdm_interval_sec: 1.0
+  use_ema: true
+  freeze_encoder: False
+  val_every: 1
+  mixed_precision: 'no'
+  log_grad_norm_every: 50
+  clip_grad_norm: 1.5
+  
+checkpoint:
+  save_last_ckpt: true
+  save_last_snapshot: false
+  topk:
+    monitor_key: test_mean_score
+    format_str: epoch={epoch:04d}-${.monitor_key}={${.monitor_key}:.3f}.ckpt
+    k: 1
+    mode: max
+
+ema:
+  _target_: diffusion_policy.model.diffusion.ema_model.EMAModel
+  inv_gamma: 1.0
+  max_value: 0.9999
+  min_value: 0.0
+  power: 0.75
+  update_after_step: 0
+
+logging:
+  project: umi_day
+  resume: False
+  mode: online
+  name: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}_${exp_name}
+  tags: ["${name}", "${task_name}", "${exp_name}"]
+  id: null
+  group: null
+
+multi_run:
+  run_dir: runs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}_${exp_name}
+  wandb_name_base: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}_${exp_name}
+
+hydra:
+  job:
+    override_dirname: ${name}
+  run:
+    dir: runs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}_${exp_name}
+  sweep:
+    dir: runs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}_${exp_name}
+    subdir: ${hydra.job.num}

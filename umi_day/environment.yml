@@ -1,0 +1,82 @@
+name: umi_day
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - pytorch3d
+dependencies:
+  - python=3.9
+  - numpy<=1.23.1 # libero needs to have np.bool
+  - pillow
+  - quaternion
+  - plotly
+  - scipy
+  - transforms3d
+  - flask-socketio
+  - simple-websocket
+  - matplotlib
+  - opencv
+  - tqdm
+  - pandas
+  - av
+  - colorama
+  - exiftool=12
+  - zarr=2.16
+  - numcodecs=0.11
+  - pyyaml
+  - cmake=3.26.0
+  - make
+  - hydra-core=1.2.0
+  - pytorch=2.1.0
+  - pytorch-cuda=12.1 # comment this out if on MacOS
+  - pytorch3d # comment this out if on MacOS
+  - torchvision=0.16.0
+  - hydra-core=1.2.0
+  - accelerate=0.24
+  - dill=0.3.7
+  - einops=0.6.1
+  - diffusers=0.18.2
+  - huggingface_hub==0.25.2
+  - transformers==4.28.0
+  - timm=0.9.7
+  - wandb=0.15.8
+  - numba=0.57
+  - sentence-transformers==2.2.2
+  - click
+  - pyzmq
+  - pynput
+  - qrcode
+  - easydict==1.9 
+  - cloudpickle==2.1.0
+  - ipykernel
+  - lxml<5.0.0
+  - gdown
+  - gym=0.21.0
+  - patchelf
+  - pip
+  - pip:
+    - open3d
+    - record3d
+    - PyExifTool==0.5
+    - imagecodecs==2023.9.18
+    - threadpoolctl==3.2
+    - numpy<=1.23.1 # libero needs to have np.bool
+    - atomics
+    - spnav @ https://github.com/cheng-chi/spnav/archive/c1c938ebe3cc542db4685e0d13850ff1abfdb943.tar.gz
+    - -e . # install `umi_day` package
+
+    # robomimic 0.2.0 (includes custom bug fixes)
+    - -e deps/robomimic
+
+    # dependencies for LIBERO
+    - free-mujoco-py==2.1.6
+    - mujoco==3.3.0 # not fully clear why we have mujoco_py which is older version and also mujoco which is newer version
+    - robosuite==1.4.1
+    - thop==0.1.1-2209072238
+    - bddl==1.0.1
+    - future==0.18.2 
+    # - gym==0.25.2
+    - -e deps/LIBERO # install `libero` package
+
+    # dependencies for ICRT
+    - -e deps/icrt

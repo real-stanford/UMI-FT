@@ -1,0 +1,107 @@
+task_type: single_dataset
+task_modes: []
+
+low_dim_obs_horizon: 2
+img_obs_horizon: 2
+action_horizon: 16
+include_file_filters: [] # if [] then include all dataset files, otherwise specify the names of the file without the hdf5 extensions such as `KITCHEN_SCENE3_turn_on_the_stove_and_put_the_moka_pot_on_it_demo`. It's recommended to specify a dataset.name_suffix that you don't use the original dataset with all the tasks. This setting also impacts which environments are loaded in the environment runner
+
+shape_meta: &shape_meta
+  image_resolution: 224
+  action:
+    horizon: ${task.action_horizon}
+    down_sample_steps: 1
+    type: low_dim
+    shape: [10]
+    latency_steps: 0
+  obs:
+    agentview_rgb: # `agentview_image` in simulator
+      horizon: ${task.img_obs_horizon}
+      down_sample_steps: 1
+      shape: [3, 224, 224]
+      type: rgb
+      latency_steps: 0
+    eye_in_hand_rgb: # `robot0_eye_in_hand_image` in simulator
+      horizon: ${task.img_obs_horizon}
+      down_sample_steps: 1
+      shape: [3, 224, 224]
+      type: rgb
+      latency_steps: 0
+    ee_pos: # `robot0_eef_pos` in simulator
+      shape: [3]
+      type: low_dim
+      horizon: ${task.low_dim_obs_horizon}
+      latency_steps: 0
+      down_sample_steps: 1
+    ee_ori: # in axis angle format, `robot0_eef_quat` in simulator in quaternion format
+      shape: [3]
+      type: low_dim
+      horizon: ${task.low_dim_obs_horizon}
+      latency_steps: 0
+      down_sample_steps: 1
+    gripper_states: # (entries of form [x, -y], which I believe are the positions of the fingers; `robot0_gripper_qpos` in simulator
+      shape: [2]
+      type: low_dim
+      horizon: ${task.low_dim_obs_horizon}
+      latency_steps: 0
+      down_sample_steps: 1
+    task_language:
+      shape: [768]
+      type: low_dim
+      horizon: 1
+      is_language: true
+
+language_embedding: &language_embedding
+  _target_: umi_day.train_network.model.language.language_embedding.LanguageEmbedding
+  model_name: "sentence-transformers/sentence-t5-base"
+
+env_runner:
+  _target_: umi_day.train_network.env_runner.libero_image_runner.LiberoImageRunner
+  language_embedding: *language_embedding
+  crf: 22
+  fps: 10
+  max_steps: 500
+  n_envs: null
+  n_test: 3
+  n_test_vis: 1
+  n_train: 1
+  n_train_vis: 1
+  past_action: false
+  render_obs_key: agentview_image
+  test_start_seed: 100000
+  tqdm_interval_sec: 1.0
+  shape_meta: *shape_meta
+  include_file_filters: ${..include_file_filters}
+
+eval_image_transforms:
+  - type: CenterCrop
+    ratio: 0.95
+
+train_image_transforms: &train_image_transforms
+  _target_: umi_day.train_network.common.augmentation.ImageAugmentation
+  shape_meta: ${shape_meta}
+  transforms:
+    - type: RandomCrop
+      ratio: 0.95
+    - _target_: torchvision.transforms.ColorJitter
+      brightness: 0.3
+      contrast: 0.4
+      saturation: 0.5
+      hue: 0.08
+
+dataset:
+  _target_: umi_day.train_network.dataset.libero_replay_image_dataset.LiberoReplayImageDataset
+  shape_meta: *shape_meta
+  action_padding: true
+  max_duration: null
+  language_embedding: *language_embedding
+  rotation_rep: rotation_6d
+  seed: 42
+  use_cache: true
+  overwrite_cache: false
+  val_ratio: 0.02
+  sample_type: task
+  max_segments: -1 # max segments in sampler
+  name_suffix: ""
+  include_file_filters: ${..include_file_filters}
+  train_image_augmentation: *train_image_transforms

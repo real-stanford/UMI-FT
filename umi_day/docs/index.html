@@ -1,0 +1,166 @@
+<!DOCTYPE html><html lang="en-US"><head>
+
+    
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#157878">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="css/style.css">
+	<link rel="shortcut icon" type="image/png" href="images/favicon.png">
+  </head>
+  <body>
+    <main id="content" class="main-content" role="main">
+      <h1 id="precision-date-and-time-utc">Precision Date and Time (UTC) - UMI Day</h1>
+
+<script src="js/jquery.min.js"></script>
+
+<script src="js/qrcodeborder.js"></script>
+
+<style>
+        #qrcode{
+            width: 100%;
+        }
+        div{
+            width: 100%;
+            display: inline-block;
+        }
+</style>
+
+<p><strong>Refresh Rate</strong> <input type="range" id="fpsid" name="fpsid" min="10" max="120" value="60" style="width: 300px;"><label for="fpsid"></label>  <b id="fpstext"></b> FPS</p>
+
+<p><strong>QR Command Set Time</strong> <input type="checkbox" id="qrid" name="qrid" checked="true"> <label for="qrid">Active</label><br></p>
+
+<p>Simply point your Labs enabled camera at this animated QR Code, to set your date and time very accurately to UTC time. This is particularly useful for multi-camera shoots, as it helps synchronize the timecode between cameras. As the camera’s internal clock will drift slowly over time, use this QR Code just before your multi-camera shoot for the best synchronization.</p>
+
+<center>
+<div id="qrcode"></div>
+<br>
+</center>
+<p>QR Command: <b id="qrtext"></b></p>
+
+<p><strong>Compatibility:</strong> Labs enabled HERO5 Session, HERO7, HERO8, HERO9, HERO10, HERO11, MAX and BONES</p>
+
+<script>
+var once = true;
+var qrcode;
+var cmd = "";
+var id = 0;
+
+
+function id5() {  // 5 characters, so up to 17-bit ID
+  return ([1111]+1).replace(/1/g, c =>
+    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] % 10 >> c / 4).toString()
+  );
+}
+
+function getMachineId() 
+{
+    let machineId = localStorage.getItem('MachineId');
+    if (!machineId) {
+    	//machineId = crypto.randomUUID();
+        machineId = id5();
+        localStorage.setItem('MachineId', machineId);
+    }
+    return machineId;
+}
+
+function isDST(d) {
+    let jan = new Date(d.getFullYear(), 0, 1).getTimezoneOffset();
+    let jul = new Date(d.getFullYear(), 6, 1).getTimezoneOffset();
+    return Math.max(jan, jul) !== d.getTimezoneOffset();    
+}
+
+function makeQR() {	
+  if(once === true)
+  {
+  	id = getMachineId();  // 5 character 10-base, so up to 17-bit ID
+    qrcode = new QRCode(document.getElementById("qrcode"), 
+    {
+      text : "oT0",
+      width : 360,
+      height : 360,
+      correctLevel : QRCode.CorrectLevel.M
+    });
+    once = false;
+  }
+}
+function padTime(i) {
+  if (i < 10) {i = "0" + i;}  // add zero in front of numbers < 10
+  return i;
+}
+function padTime1000(i) {
+  if (i >= 10 && i < 100) {i = "0" + i;}  // add zero in front of numbers < 100
+  else if (i < 10) {i = "00" + i;}  // add zero in front of numbers < 10
+  return i;
+}
+function timeLoop(prevTime)
+{
+
+  if(document.getElementById("fpsid") !== null)
+  {
+	fps = parseInt(document.getElementById("fpsid").value);	
+  document.getElementById("fpstext").innerHTML = fps;
+  }
+  
+  var currTime = Date.now()
+  // exactly 60fps
+  if ((currTime - prevTime) < 1000./fps){
+    requestAnimationFrame(function (){timeLoop(prevTime)});
+    return;
+  }
+
+  var today;
+  var yy,mm,dd,h,m,s;
+  var ms,tz;
+  
+  today = new Date();
+  yy = today.getUTCFullYear() - 2000;
+  mm = today.getUTCMonth() + 1;
+  dd = today.getUTCDate();
+  h = today.getUTCHours();
+  m = today.getUTCMinutes();
+  s = today.getUTCSeconds();
+  ms = today.getUTCMilliseconds();
+  yy = padTime(yy);
+  mm = padTime(mm);
+  dd = padTime(dd);
+  h = padTime(h);
+  m = padTime(m);
+  s = padTime(s);
+  //ms = Math.floor(ms / 10); // hundredths
+  ms = padTime1000(ms);
+  
+  tz = 0;
+
+  var td = 0;
+
+  var set_time = true;
+  if(document.getElementById("qrid") !== null)
+  {
+    set_time = document.getElementById("qrid").checked;
+  }
+  cmd = today.toISOString();
+  if(set_time){
+    cmd = "oT" + yy + mm + dd + h + m + s + "." + ms + "oTD" + td + "oTZ" + tz + "oTI" + id;
+  }
+  qrcode.clear(); 
+  qrcode.makeCode(cmd);
+  document.getElementById("qrtext").innerHTML = cmd;
+ 
+  requestAnimationFrame(function (){timeLoop(currTime)});
+}
+
+function myReloadFunction() {
+  location.reload();
+}
+
+makeQR();
+timeLoop(Date.now());
+
+</script>
+
+    </main>
+  
+
+</body></html>

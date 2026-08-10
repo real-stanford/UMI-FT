@@ -1,0 +1,380 @@
+import copy
+from typing import Optional, Callable, Dict
+import enum
+import time
+import cv2
+import numpy as np
+import multiprocessing as mp
+from threadpoolctl import threadpool_limits
+from multiprocessing.managers import SharedMemoryManager
+from modules.timestamp_accumulator import get_accumulate_timestamp_idxs
+from shared_memory.shared_memory_ring_buffer import SharedMemoryRingBuffer
+from shared_memory.shared_memory_queue import SharedMemoryQueue, Full, Empty
+from peripherals.video_recorder import VideoRecorder
+from utils.usb_util import reset_usb_device
+import os
+from umi_day.deployment.iphone.iphone_deploy import ServerState, run_server_on_thread
+
+
+class Command(enum.Enum):
+    RESTART_PUT = 0
+    START_RECORDING = 1
+    STOP_RECORDING = 2
+
+
+class IPhoneCameraUMIFT(mp.Process):
+
+    MAX_PATH_LENGTH = 4096  # linux path has a limit of 4096 bytes
+
+    def __init__(
+        self,
+        name: str,
+        shm_manager: SharedMemoryManager,
+        server_ip: ServerState,
+        server_port: int,
+        resolution=(320, 240),
+        capture_fps=60,
+        put_fps=None,
+        put_downsample=True,
+        get_max_k=30,
+        receive_latency=0.0,
+        cap_buffer_size=1,
+        num_threads=2,
+        transform: Optional[Callable[[Dict], Dict]] = None,
+        vis_transform: Optional[Callable[[Dict], Dict]] = None,
+        recording_transform: Optional[Callable[[Dict], Dict]] = None,
+        video_recorder: Optional[VideoRecorder] = None,
+        verbose=False,
+        is_depth=False,
+    ):
+        super().__init__()
+
+        self.is_depth = is_depth
+
+
+        if put_fps is None:
+            put_fps = capture_fps
+
+        # create ring buffer
+        resolution = tuple(resolution)
+        shape = resolution[::-1]
+        if is_depth:
+            examples = {"color": np.empty(shape=shape + (3,), dtype=np.float16)}
+            print(f"{examples['color'].shape=}")
+        else:
+            examples = {"color": np.empty(shape=shape + (3,), dtype=np.uint8)}
+            print(f"{examples['color'].shape=}")
+        examples["camera_capture_timestamp"] = 0.0
+        examples["camera_receive_timestamp"] = 0.0
+        examples["timestamp"] = 0.0
+        examples["step_idx"] = 0
+
+        vis_examples = copy.deepcopy(examples)
+        ### WTF why this doesn't work?
+        # tf_example = {'color': np.empty(shape=shape+(3,), dtype=np.uint8)}
+        # vis_examples = examples.copy()
+        # vis_shape = vis_transform(tf_example)["color"].shape
+        # print(f"{vis_shape=}")
+        if vis_transform is not None:
+            vis_shape = (720, 960, 3)
+        else:
+            vis_shape = shape + (3,)
+        vis_examples["color"] = np.empty(shape=vis_shape, dtype=np.uint8)
+        # print(f"{vis_examples['color'].shape=}, {examples['color'].shape=}")
+        # print(f"{vis_examples['color'].flags=}, {examples['color'].flags=}")
+
+        vis_ring_buffer = SharedMemoryRingBuffer.create_from_examples(
+            shm_manager=shm_manager,
+            examples=vis_examples,
+            get_max_k=1,
+            get_time_budget=0.2,
+            put_desired_frequency=capture_fps,
+        )
+
+        ring_buffer = SharedMemoryRingBuffer.create_from_examples(
+            shm_manager=shm_manager,
+            examples=examples if transform is None else transform(dict(examples)),
+            get_max_k=get_max_k,
+            get_time_budget=0.2,
+            put_desired_frequency=put_fps,
+        )
+
+        # create command queue
+        examples = {
+            "cmd": Command.RESTART_PUT.value,
+            "put_start_time": 0.0,
+            "video_path": np.array("a" * self.MAX_PATH_LENGTH),
+            "recording_start_time": 0.0,
+        }
+
+        command_queue = SharedMemoryQueue.create_from_examples(
+            shm_manager=shm_manager, examples=examples, buffer_size=128
+        )
+
+        # create video recorder
+        # if is_depth:
+        #     video_recorder = None
+        # elif video_recorder is None and not is_depth:
+        #     # default to nvenc GPU encoder
+        #     video_recorder = VideoRecorder.create_hevc_nvenc(
+        #         shm_manager=shm_manager,
+        #         fps=capture_fps,
+        #         input_pix_fmt="bgr24",
+        #         bit_rate=6000 * 1000,
+        #     )
+        #     assert video_recorder.fps == capture_fps
+
+        if video_recorder is None:
+            # default to nvenc GPU encoder
+            video_recorder = VideoRecorder.create_hevc_nvenc(
+                shm_manager=shm_manager,
+                fps=capture_fps,
+                input_pix_fmt="bgr24",
+                bit_rate=6000 * 1000,
+            )
+        assert video_recorder.fps == capture_fps
+
+        # copied variables
+        self.name = name
+        self.shm_manager = shm_manager
+        self.server_ip = server_ip
+        self.server_port = server_port
+        self.resolution = resolution
+        self.capture_fps = capture_fps
+        self.put_fps = put_fps
+        self.put_downsample = put_downsample
+        self.receive_latency = receive_latency
+        self.cap_buffer_size = cap_buffer_size
+        self.transform = transform
+        self.vis_transform = vis_transform
+        self.recording_transform = recording_transform
+        self.video_recorder = video_recorder
+        self.verbose = verbose
+        self.put_start_time = None
+        self.num_threads = num_threads
+
+        # shared variables
+        self.stop_event = mp.Event()
+        self.ready_event = mp.Event()
+        self.ring_buffer = ring_buffer
+        self.vis_ring_buffer = vis_ring_buffer
+        self.command_queue = command_queue
+
+    # ========= context manager ===========
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop()
+
+    # ========= user API ===========
+    def start(self, wait=True, put_start_time=None):
+        self.put_start_time = put_start_time
+        shape = self.resolution[::-1]
+        data_example = np.empty(shape=shape + (3,), dtype=np.uint8)
+        self.video_recorder.start(
+            shm_manager=self.shm_manager, data_example=data_example
+        )
+        # must start video recorder first to create share memories
+        super().start()
+        if wait:
+            self.start_wait()
+
+    def stop(self, wait=True):
+        self.video_recorder.stop()
+        self.stop_event.set()
+        if wait:
+            self.end_wait()
+
+    def start_wait(self):
+        self.ready_event.wait()
+        self.video_recorder.start_wait()
+
+    def end_wait(self):
+        self.join()
+        self.video_recorder.end_wait()
+
+    def wait_until_buffer_full(self):
+        while self.ring_buffer.count < self.ring_buffer.buffer_size:
+            print(f'{self.name} blocking until camera ring buffer full')
+            time.sleep(1)
+
+    @property
+    def is_ready(self):
+        return self.ready_event.is_set()
+
+    def get(self, k=None, out=None):
+        if k is None:
+            return self.ring_buffer.get(out=out)
+        else:
+            return self.ring_buffer.get_last_k(k, out=out)
+
+    def get_vis(self, out=None):
+        return self.vis_ring_buffer.get(out=out)
+
+    def start_recording(self, video_path: str, start_time: float = -1):
+        path_len = len(video_path.encode("utf-8"))
+        if path_len > self.MAX_PATH_LENGTH:
+            raise RuntimeError("video_path too long.")
+        self.command_queue.put(
+            {
+                "cmd": Command.START_RECORDING.value,
+                "video_path": video_path,
+                "recording_start_time": start_time,
+            }
+        )
+
+    def stop_recording(self):
+        self.command_queue.put({"cmd": Command.STOP_RECORDING.value})
+
+    def restart_put(self, start_time):
+        self.command_queue.put(
+            {"cmd": Command.RESTART_PUT.value, "put_start_time": start_time}
+        )
+
+    # ========= interval API ===========
+    def run(self):
+        pid = os.getpid()
+        os.sched_setaffinity(pid, [5])
+        # limit threads
+        threadpool_limits(self.num_threads)
+        cv2.setNumThreads(self.num_threads)
+
+        # start the camera server
+        server_state = run_server_on_thread(self.server_ip, self.server_port, eval_latency=False)
+
+        try:
+            # set resolution and fps
+            w, h = self.resolution
+            fps = self.capture_fps
+            
+            # put frequency regulation
+            put_idx = None
+            put_start_time = self.put_start_time
+            if put_start_time is None:
+                put_start_time = time.time()
+
+            # reuse frame buffer
+            iter_idx = 0
+            t_start = time.time()
+            while not self.stop_event.is_set():
+                ts = time.time()
+
+                if not self.is_depth:
+                    frame = self.video_recorder.get_img_buffer()
+                    if iter_idx == 0:
+                        print(f'{self.name} waiting for first frame')
+                    frame_data, is_depth = server_state.get_blocking()
+                    assert self.is_depth == is_depth
+                    frame[:] = frame_data
+                    if iter_idx == 0:
+                        print(f'{self.name} found first frame')
+                else:
+                    # For depth
+                    frame = np.empty((self.resolution[1], self.resolution[0], 3), dtype=np.float16)
+                    frame_data, is_depth = server_state.get_blocking()
+                    assert self.is_depth == is_depth
+                    frame[:] = np.repeat(frame_data[..., np.newaxis], 3, axis=2).astype(np.float16)
+
+                    depth_video_frame = self.video_recorder.get_img_buffer()
+                    depth_clip = 0.5
+                    depth_video_frame[:] = np.clip((frame_data / depth_clip) * 255, 0, 255).astype(np.uint8)[..., None].repeat(3, axis=2)
+
+                t_recv = time.time()
+                t_cal = t_recv - self.receive_latency  # calibrated latency
+
+                # record frame
+                # if not self.is_depth and self.video_recorder.is_ready():
+                #     self.video_recorder.write_img_buffer(frame, frame_time=t_cal)
+
+                if self.video_recorder and self.video_recorder.is_ready():
+                    if self.is_depth:
+                        self.video_recorder.write_img_buffer(depth_video_frame, frame_time=t_cal)
+                    else:
+                        self.video_recorder.write_img_buffer(frame, frame_time=t_cal)
+
+                data = dict()
+                data["camera_capture_timestamp"] = t_recv
+                data["color"] = frame
+
+
+                # apply transform
+                put_data = data
+                if self.transform is not None:
+                    put_data = self.transform(dict(data))
+
+                if self.put_downsample:
+                    # put frequency regulation
+                    local_idxs, global_idxs, put_idx = get_accumulate_timestamp_idxs(
+                        timestamps=[t_cal],
+                        start_time=put_start_time,
+                        dt=1 / self.put_fps,
+                        # this is non in first iteration
+                        # and then replaced with a concrete number
+                        next_global_idx=put_idx,
+                        # continue to pump frames even if not started.
+                        # start_time is simply used to align timestamps.
+                        allow_negative=True,
+                    )
+
+                    for step_idx in global_idxs:
+                        put_data["step_idx"] = step_idx
+                        put_data["timestamp"] = t_cal
+                        self.ring_buffer.put(put_data, wait=False)
+                else:
+                    step_idx = int((t_cal - put_start_time) * self.put_fps)
+                    put_data["step_idx"] = step_idx
+                    put_data["timestamp"] = t_cal
+                    self.ring_buffer.put(put_data, wait=False)
+
+                # signal ready
+                if iter_idx == 0:
+                    self.ready_event.set()
+
+                # put to vis
+                vis_data = data
+                if self.vis_transform == self.transform:
+                    vis_data = put_data
+                elif self.vis_transform is not None:
+                    vis_data = self.vis_transform(dict(data))
+                self.vis_ring_buffer.put(vis_data, wait=False)
+
+                # perf
+                t_end = time.time()
+                duration = t_end - t_start
+                frequency = np.round(1 / duration, 1)
+                t_start = t_end
+                if self.verbose:
+                    print(f"[IPhoneCamera {self.stream_name}] FPS {frequency}")
+
+                # fetch command from queue
+                try:
+                    commands = self.command_queue.get_all()
+                    n_cmd = len(commands["cmd"])
+                except Empty:
+                    n_cmd = 0
+
+                # execute commands
+                for i in range(n_cmd):
+                    command = dict()
+                    for key, value in commands.items():
+                        command[key] = value[i]
+                    cmd = command["cmd"]
+                    if cmd == Command.RESTART_PUT.value:
+                        put_idx = None
+                        put_start_time = command["put_start_time"]
+                    elif cmd == Command.START_RECORDING.value:
+                        video_path = str(command["video_path"])
+                        start_time = command["recording_start_time"]
+                        if start_time < 0:
+                            start_time = None
+                        self.video_recorder.start_recording(
+                            video_path, start_time=start_time
+                        )
+                    elif cmd == Command.STOP_RECORDING.value:
+                        self.video_recorder.stop_recording()
+
+                iter_idx += 1
+        finally:
+            self.video_recorder.stop()

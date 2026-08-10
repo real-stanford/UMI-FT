@@ -1,0 +1,35 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../umi_data"
+		},
+		{
+			"path": "../../arx5-sdk"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "umi_day",
+		"python.analysis.extraPaths": [
+			"deps/universal_manipulation_interface",
+			"deps/icrt",
+		],
+		"files.watcherExclude": {
+			"**/data/**": true,
+			"**/tmp_demonstrations/**": true,
+			"**/tmp_sessions/**": true,
+			"**/umi_data/**": true,
+			"**/wandb/**": true
+		},
+		"python.analysis.exclude": [
+			"**/data",
+			"**/tmp_demonstrations",
+			"**/tmp_sessions",
+			"**/umi_data",
+			"**/wandb",
+			"**/deps"
+		]
+	}
+}

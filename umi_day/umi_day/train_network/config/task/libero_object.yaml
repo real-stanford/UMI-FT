@@ -1,0 +1,11 @@
+defaults:
+  - libero_defaults
+
+name: libero_object
+dataset_path: &dataset_path datasets/libero/libero_object
+
+dataset:
+  dataset_path: *dataset_path
+
+env_runner:
+  dataset_path: *dataset_path

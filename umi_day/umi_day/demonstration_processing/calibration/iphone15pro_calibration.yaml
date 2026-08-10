@@ -1,0 +1,17 @@
+wide: # obtained from demonstration collection ARKit (use only with output resolution from ARKit)
+  intrinsics: [[1.394946e+03, 0.000000e+00, 9.560186e+02], [0.000000e+00, 1.394946e+03, 7.214128e+02], [0.000000e+00, 0.000000e+00, 1.000000e+00]]
+  projectionMatrix: [[1.453069e+00, 0.000000e+00, 3.626466e-03, 0.000000e+00], [0.000000e+00, 1.937425e+00, 2.656639e-03, 0.000000e+00], [0.000000e+00, 0.000000e+00, -9.999998e-01, -9.999998e-04], [0.000000e+00, 0.000000e+00, -1.000000e+00, 0.000000e+00]]
+ultrawide: # obtained from demonstration collection ARKit (use only with output resolution from ARKit)
+  intrinsics: [[2.575137e+02, 0.000000e+00, 3.187089e+02], [0.000000e+00, 2.575137e+02, 2.399295e+02], [0.000000e+00, 0.000000e+00, 1.000000e+00]]
+  projectionMatrix: [[8.047303e-01, 0.000000e+00, 2.472222e-03, 0.000000e+00], [0.000000e+00, 1.072974e+00, 1.789391e-03, 0.000000e+00], [0.000000e+00, 0.000000e+00, -9.999998e-01, -9.999998e-04], [0.000000e+00, 0.000000e+00, -1.000000e+00, 0.000000e+00]]
+depth: # obtained from the deployment setup
+  instrinsicMatrix: [[4.665952e+02, 0.000000e+00, 3.189309e+02], [0.000000e+00, 4.665952e+02, 2.408455e+02], [0.000000e+00, 0.000000e+00, 1.000000e+00]]
+  lensDistortionCenter:
+    x: 319.44443601641797
+    y: 240.41532825765626
+  pixelSize: 0.0153719988
+  intrinsicMatrixReferenceDimensions:
+    width: 640
+    height: 480
+  lensDistortionLookupTable: TODO
+  inverseLensDistortionLookupTable: TODO  

@@ -1,0 +1,21 @@
+defaults:
+  - multitask_umi_policy
+
+name: multitask_umi_progression
+
+# TODO: figure out how to speed up dataloader by skipping the low dim observations and the action generation, which are not needed for the progression task
+# low_dim_obs_horizon: 0
+img_obs_horizon: 1
+# action_horizon: 0
+ignore_proprioception: true
+
+shape_meta: &shape_meta
+  labels:
+    progression:
+      shape: [1]
+
+task_completion_threshold: 0.9 # when the progression network predicts a task is 90% complete, we consider it complete
+
+dataset:
+  include_labels: true
+  val_ratio: 0.1
