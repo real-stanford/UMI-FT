@@ -6,7 +6,7 @@ Official code base for UMI-FT.
 UMI-FT lets you collect forceful manipulation data *without* a robot.
 Please refer to [UMI-FT Hardware Instructions](https://docs.google.com/document/d/e/2PACX-1vRrfSfjj3ct5u4bdyJYX92zH3QwZahU1D0nfb9wjb6GqDXqEZYVsaxwcCh1gwJgjRlq1fbgLJECGoPf/pub) for building UMI-FT.
 
-Please refer to [UMI-FT iPhone App (coming soon)](https://github.com/real-stanford/UMI-FT) for installing the data collection app on the iPhone.
+Please refer to [iPhUMI]([https://github.com/real-stanford/UMI-FT](https://github.com/real-stanford/iPhUMI)) for installing the data collection app on the iPhone. For the app itself, the version used for UMI-FT is under [/umi_day_iphone](https://github.com/real-stanford/UMI-FT/tree/main/umi_day_iphone) in this repo, but the public iPhUMI app should work fine as well.
 
 
 1. Install [mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) and the UMIFT_Data package.
@@ -99,7 +99,7 @@ Set user-specific variables such as `$raw_umi_data_dir` and `$session_name` in t
 
 ### 3. Run Postprocessing Commands
 The following was tested in Linux 22.04.
-Note: The following requires [umi_day package (coming soon with the iPhone app)](https://github.com/real-stanford/UMI-FT)
+Install the [umi_day](https://github.com/real-stanford/UMI-FT/tree/main/umi_day) package in this repo. 
 
 #### Postprocess the iPhone Data
 ```bash
