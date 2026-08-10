@@ -6,7 +6,7 @@ Official code base for UMI-FT.
 UMI-FT lets you collect forceful manipulation data *without* a robot.
 Please refer to [UMI-FT Hardware Instructions](https://docs.google.com/document/d/e/2PACX-1vRrfSfjj3ct5u4bdyJYX92zH3QwZahU1D0nfb9wjb6GqDXqEZYVsaxwcCh1gwJgjRlq1fbgLJECGoPf/pub) for building UMI-FT.
 
-Please refer to [iPhUMI]([https://github.com/real-stanford/UMI-FT](https://github.com/real-stanford/iPhUMI)) for installing the data collection app on the iPhone. For the app itself, the version used for UMI-FT is under [/umi_day_iphone](https://github.com/real-stanford/UMI-FT/tree/main/umi_day_iphone) in this repo, but the public iPhUMI app should work fine as well.
+Please refer to [iPhUMI](https://github.com/real-stanford/iPhUMI) for installing the data collection app on the iPhone. For the app itself, the version used for UMI-FT is under [/umi_day_iphone](https://github.com/real-stanford/UMI-FT/tree/main/umi_day_iphone) in this repo, but the public iPhUMI app should work fine as well.
 
 
 1. Install [mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) and the UMIFT_Data package.
@@ -71,7 +71,7 @@ Follow the instructions below in `{repo_root}/UMIFT_Data`.
 
 ### 1. Set Constants in Postprocessing Scripts
 Set user-specific variables such as `$raw_umi_data_dir` and `$session_name` in the following scripts for your collected data session:
-    - `bash/data_post_process_gopro_iphone.sh`
+    - `bash/data_post_process_iphone.sh`
     - `bash/data_post_process_multimodal.sh`
 
 - `$session_name`: Should match the session name set on the iPhone app.
@@ -91,7 +91,7 @@ Set user-specific variables such as `$raw_umi_data_dir` and `$session_name` in t
 │   │   │   ├── <COINFT_FILE>_RF.csv
 │   │   │   ├── ...
 │   ├── processed_data/ (output from data processing)
-│   │   ├── gopro_iphone/
+│   │   ├── iphone/
 │   │   ├── all/
 ```
 
@@ -115,7 +115,7 @@ bash bash/data_post_process_multimodal.sh
 
 
 ### 4. Merge Data
-Using `scripts/zarr_utils.py`, merge any relevant demonstration sessions into one by properly setting `input_zarrs` and `output_zarr`. This step is recommended even whwen there is only one session.
+Using `scripts/zarr_utils.py`, merge any relevant demonstration sessions into one by properly setting `input_zarrs` and `output_zarr`. This step is recommended even when there is only one session.
 
 ### 5. Postprocessing for Adaptive Compliance Policy
 Move to `{repo_root}`.
@@ -308,7 +308,7 @@ git clone git@github.com:yifan-hou/hardware_interfaces.git
 Then build & install following their readme, following this order.
 
 ### (Optional) Install to a local path
-We recommend to install to a local path for easy maintainence, also you don't need sudo access. To do so, replace the line
+We recommend to install to a local path for easy maintenance, also you don't need sudo access. To do so, replace the line
 ``` sh
 cmake ..
 ```
@@ -345,7 +345,7 @@ Run the following commands to download and set it up:
 
 ```bash
 # 1. Download ONNX Runtime (v1.16.3 is recommended)
-wget [https://github.com/microsoft/onnxruntime/releases/download/v1.16.3/onnxruntime-linux-x64-1.16.3.tgz](https://github.com/microsoft/onnxruntime/releases/download/v1.16.3/onnxruntime-linux-x64-1.16.3.tgz)
+wget https://github.com/microsoft/onnxruntime/releases/download/v1.16.3/onnxruntime-linux-x64-1.16.3.tgz
 
 # 2. Extract the file
 tar -xvzf onnxruntime-linux-x64-1.16.3.tgz
@@ -364,7 +364,7 @@ In Scripting/Interactive Scripting, paste [the driver code here](https://github.
 Then update the wsg gripper IP in the [corresponding hardware config field](https://github.com/yifan-hou/hardware_interfaces/blob/main/workcell/table_top_manip/config/right_arm_coinft.yaml#L113-L128).
 
 ## Setup iPhone for streaming
-Set IP address and port in the iPhone app `umi_day_iphone/ViewController` (App coming soon):
+Set IP address and port in the iPhone app `umi_day_iphone/ViewController`:
 ```py
    var hostIP: String = "192.168.2.18"
    var hostPort: Int = 5555
@@ -404,7 +404,7 @@ Before testing, check the following:
 * Run `python UMI-FT/PyriteEnvSuites/scripts/kill_ports.py` to kill any process that is listening on the ports we use. They are likely created by previous failed runs.
 * Then start execution by running `UMI-FT/PyriteEnvSuites/env_runners/umift_env_runner.py`.
 
-The script will first launch the manpulation server, which initialize all the hardware specified in the hardware config file. A video streaming window will pop up. When the video stream looks good (actual video is streaming, no black screen), press `q` to leave the window and continue the test by following onscreen instructions.
+The script will first launch the manipulation server, which initialize all the hardware specified in the hardware config file. A video streaming window will pop up. When the video stream looks good (actual video is streaming, no black screen), press `q` to leave the window and continue the test by following onscreen instructions.
 
 ## Citation
 If you find this codebase useful, feel free to cite our paper:
