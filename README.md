@@ -23,7 +23,7 @@ Please refer to [iPhUMI](https://github.com/real-stanford/iPhUMI) for installing
 
 4. **Record Demos**
     - Set script constants for coinft data collection
-        Set user-specific variables such as `$raw_umi_data_dir`, `$session_name`, `$PORT` and `$time`in the script, `bash/wired_collect_data.sh`
+        Set user-specific variables such as `$raw_umi_data_dir`, `$session_name`, `$PORT` and `$time` in the script, `bash/wired_collect_data.sh`
         - `$time`: the duration in seconds for the data collection, make sure to be longer than demo. The data collection should start earlier than the demo (iPhone), and end later than the demo (iPhone).
         - `$session_name`: Should match the session name set on the UMI_day app.
         - `$PORT`: This is the serial port to the microcontroller connecting the two CoinFTs.
@@ -49,7 +49,7 @@ Please refer to [iPhUMI](https://github.com/real-stanford/iPhUMI) for installing
 ```
 <raw_umi_data_dir>/ (:=<UMIFT_REPO_ROOT>/data/umift_data)
 ├── <session_name>/
-│   ├── UMI_iphone/
+│   ├── UMI_iPhone/
 │   │   ├── export_<YYYY-MM-DD_TIME>/
 │   │   │   ├── <TIME>_<side>.json
 │   │   │   ├── ...
